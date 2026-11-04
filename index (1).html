@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>База насекомых</title>
+<style>
+:root{--bg:#f3f5f0;--card:#fff;--text:#1d2519;--muted:#6b7566;--accent:#3f7d2c;--accent-text:#fff;--line:#dfe4da;--danger:#b3261e;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#141812;--card:#1e241b;--text:#e8ede4;--muted:#9aa595;--accent:#6fb85a;--accent-text:#0e1a0a;--line:#2f372b;--danger:#f2837c}}
+:root[data-theme="dark"]{--bg:#141812;--card:#1e241b;--text:#e8ede4;--muted:#9aa595;--accent:#6fb85a;--accent-text:#0e1a0a;--line:#2f372b;--danger:#f2837c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;font-size:16px;line-height:1.4}
+main{max-width:640px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:16px}
+label.lbl{display:block;font-size:14px;color:var(--muted);margin:12px 0 6px}
+label.lbl:first-child{margin-top:0}
+input[type=text],textarea{width:100%;font:inherit;font-size:16px;padding:11px;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--text)}
+textarea{min-height:84px;resize:vertical}
+.photo-btn{display:flex;align-items:center;justify-content:center;gap:8px;height:150px;border:2px dashed var(--line);border-radius:12px;color:var(--muted);cursor:pointer;overflow:hidden;background:var(--bg)}
+.photo-btn img{width:100%;height:100%;object-fit:cover}
+input[type=file]{display:none}
+button{font:inherit;font-weight:600;border:0;border-radius:12px;padding:13px 16px;cursor:pointer;background:var(--accent);color:var(--accent-text);width:100%}
+button.sec{background:transparent;color:var(--accent);border:1.5px solid var(--accent)}
+button.del{width:auto;padding:6px 10px;background:transparent;color:var(--danger);font-size:18px}
+.wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:420px}
+th,td{text-align:left;vertical-align:top;padding:8px 6px;border-bottom:1px solid var(--line);font-size:15px}
+th{font-size:13px;color:var(--muted);font-weight:600}
+td img{width:72px;height:72px;object-fit:cover;border-radius:8px;display:block}
+.empty{color:var(--muted);text-align:center;padding:18px 0}
+.row{display:flex;gap:10px;margin-top:12px}
+.note{font-size:13px;color:var(--muted);margin-top:8px}
+#ov{position:fixed;inset:0;background:rgba(0,0,0,.85);display:none;flex-direction:column;align-items:center;padding:calc(env(safe-area-inset-top,0px) + 14px) 14px calc(env(safe-area-inset-bottom,0px) + 14px);z-index:10}
+#ov.on{display:flex}
+#ov p{color:#fff;text-align:center;margin:0 0 10px}
+#ov .im{flex:1;overflow:auto;width:100%}
+#ov img{width:100%;display:block}
+#ov button{margin-top:10px;max-width:320px}
+</style>
+</head>
+<body>
+<main>
+<h1>🐛 База насекомых</h1>
+
+<div class="card">
+  <label class="lbl">1. Фото</label>
+  <label class="photo-btn" id="pb"><span>📷 Сделать или выбрать фото</span><input type="file" id="file" accept="image/*"></label>
+  <label class="lbl" for="name">2. Название насекомого</label>
+  <input type="text" id="name" placeholder="Например, божья коровка">
+  <label class="lbl" for="desc">3. Краткое описание</label>
+  <textarea id="desc" placeholder="Где встретили, как выглядит, чем питается…"></textarea>
+  <div class="row"><button id="add">Добавить</button></div>
+</div>
+
+<div class="card">
+  <div class="wrap"><table>
+    <thead><tr><th>Фото</th><th>Название</th><th>Описание</th><th></th></tr></thead>
+    <tbody id="body"></tbody>
+  </table></div>
+  <div id="empty" class="empty">Пока записей нет</div>
+  <div class="row"><button class="sec" id="send">📤 Отправить таблицу</button></div>
+  <div class="note">Таблица превратится в картинку — выберите мессенджер в открывшемся меню.</div>
+</div>
+
+<div class="card">
+  <b>Резервная копия</b>
+  <div class="note" style="margin-top:4px">Файл с записями и фото. Его можно отправить в мессенджер, сохранить в «Файлы» или загрузить на другом телефоне.</div>
+  <div class="row"><button class="sec" id="exp">💾 Сохранить базу в файл</button></div>
+  <div class="row"><button class="sec" id="imp">📥 Загрузить базу из файла</button><input type="file" id="impfile" accept=".json,application/json,text/plain"></div>
+</div>
+</main>
+
+<div id="ov"><p>Нажмите на картинку и удерживайте, затем «Поделиться» или «Сохранить»</p><div class="im"><img id="ovimg" alt=""></div><button id="ovclose">Закрыть</button></div>
+
+<script>
+var items=[], photo=null, db=null;
+var $=function(i){return document.getElementById(i)};
+
+function openDb(){
+  return new Promise(function(res){
+    try{
+      var r=indexedDB.open('insects',1);
+      r.onupgradeneeded=function(){r.result.createObjectStore('items',{keyPath:'id',autoIncrement:true})};
+      r.onsuccess=function(){db=r.result;res()};
+      r.onerror=function(){res()};
+    }catch(e){res()}
+  });
+}
+function loadAll(){
+  return new Promise(function(res){
+    if(!db)return res();
+    try{
+      var q=db.transaction('items').objectStore('items').getAll();
+      q.onsuccess=function(){items=q.result||[];res()};
+      q.onerror=function(){res()};
+    }catch(e){res()}
+  });
+}
+function saveItem(it){
+  return new Promise(function(res){
+    if(!db){it.id=Date.now();return res()}
+    try{
+      var q=db.transaction('items','readwrite').objectStore('items').add(it);
+      q.onsuccess=function(){it.id=q.result;res()};
+      q.onerror=function(){it.id=Date.now();res()};
+    }catch(e){it.id=Date.now();res()}
+  });
+}
+function removeItem(id){
+  try{ if(db) db.transaction('items','readwrite').objectStore('items').delete(id); }catch(e){}
+}
+
+function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function render(){
+  var b=$('body');
+  b.innerHTML=items.map(function(it,i){
+    return '<tr><td>'+(it.photo?'<img src="'+it.photo+'" alt="">':'')+'</td><td><b>'+esc(it.name)+'</b></td><td>'+esc(it.desc||'')+'</td><td><button class="del" data-i="'+i+'" aria-label="Удалить">✕</button></td></tr>';
+  }).join('');
+  $('empty').style.display=items.length?'none':'block';
+}
+
+function shrink(file){
+  return new Promise(function(res,rej){
+    var fr=new FileReader();
+    fr.onload=function(){
+      var im=new Image();
+      im.onload=function(){
+        var m=700,s=Math.min(1,m/Math.max(im.width,im.height));
+        var c=document.createElement('canvas');
+        c.width=Math.round(im.width*s);c.height=Math.round(im.height*s);
+        c.getContext('2d').drawImage(im,0,0,c.width,c.height);
+        res(c.toDataURL('image/jpeg',0.8));
+      };
+      im.onerror=rej;im.src=fr.result;
+    };
+    fr.onerror=rej;fr.readAsDataURL(file);
+  });
+}
+
+document.addEventListener('change',function(e){
+  if(!e.target||e.target.id!=='file')return;
+  var f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  shrink(f).then(function(d){
+    photo=d;
+    $('pb').innerHTML='<img src="'+d+'" alt=""><input type="file" id="file" accept="image/*">';
+  }).catch(function(){alert('Не удалось загрузить фото')});
+});
+
+$('add').addEventListener('click',function(){
+  var name=$('name').value.trim();
+  if(!name){alert('Введите название насекомого');$('name').focus();return}
+  var it={name:name,desc:$('desc').value.trim(),photo:photo,ts:Date.now()};
+  saveItem(it).then(function(){
+    items.push(it);render();
+    $('name').value='';$('desc').value='';photo=null;
+    $('pb').innerHTML='<span>📷 Сделать или выбрать фото</span><input type="file" id="file" accept="image/*">';
+  });
+});
+
+$('body').addEventListener('click',function(e){
+  var b=e.target.closest('.del');if(!b)return;
+  var i=+b.dataset.i;
+  if(!confirm('Удалить запись «'+items[i].name+'»?'))return;
+  removeItem(items[i].id);items.splice(i,1);render();
+});
+
+function wrap(ctx,text,w){
+  var out=[],paras=String(text||'').split('\n');
+  paras.forEach(function(p){
+    var words=p.split(' '),line='';
+    words.forEach(function(wd){
+      var t=line?line+' '+wd:wd;
+      if(ctx.measureText(t).width>w&&line){out.push(line);line=wd}else line=t;
+    });
+    out.push(line);
+  });
+  return out;
+}
+function loadImg(src){
+  return new Promise(function(res){
+    if(!src)return res(null);
+    var im=new Image();im.onload=function(){res(im)};im.onerror=function(){res(null)};im.src=src;
+  });
+}
+function buildImage(){
+  return Promise.all(items.map(function(it){return loadImg(it.photo)})).then(function(imgs){
+    var W=1080,P=24,cp=200,cn=260,cd=W-2*P-cp-cn-20;
+    var meas=document.createElement('canvas').getContext('2d');
+    meas.font='30px sans-serif';
+    var rows=items.map(function(it){
+      meas.font='bold 30px sans-serif';var nl=wrap(meas,it.name,cn-16);
+      meas.font='28px sans-serif';var dl=wrap(meas,it.desc,cd-16);
+      var h=Math.max(cp,Math.max(nl.length,dl.length)*38+24);
+      return{nl:nl,dl:dl,h:h};
+    });
+    var H=P+90+50+rows.reduce(function(s,r){return s+r.h},0)+P;
+    var c=document.createElement('canvas');c.width=W;c.height=H;
+    var x=c.getContext('2d');
+    x.fillStyle='#fff';x.fillRect(0,0,W,H);
+    x.fillStyle='#1d2519';x.font='bold 42px sans-serif';x.textBaseline='top';
+    x.fillText('База насекомых',P,P);
+    x.fillStyle='#6b7566';x.font='26px sans-serif';
+    x.fillText(new Date().toLocaleDateString('ru-RU')+' · записей: '+items.length,P,P+54);
+    var y=P+90;
+    x.fillStyle='#eef2ea';x.fillRect(P,y,W-2*P,50);
+    x.fillStyle='#3f7d2c';x.font='bold 24px sans-serif';
+    x.fillText('Фото',P+10,y+12);x.fillText('Название',P+cp+10,y+12);x.fillText('Описание',P+cp+cn+20,y+12);
+    y+=50;
+    items.forEach(function(it,i){
+      var r=rows[i];
+      x.strokeStyle='#dfe4da';x.lineWidth=2;
+      x.beginPath();x.moveTo(P,y+r.h);x.lineTo(W-P,y+r.h);x.stroke();
+      var im=imgs[i];
+      if(im){
+        var s=Math.min((cp-16)/im.width,(cp-16)/im.height);
+        x.drawImage(im,P+8,y+8,im.width*s,im.height*s);
+      }
+      x.fillStyle='#1d2519';x.font='bold 30px sans-serif';
+      r.nl.forEach(function(l,k){x.fillText(l,P+cp+8,y+12+k*38)});
+      x.font='28px sans-serif';
+      r.dl.forEach(function(l,k){x.fillText(l,P+cp+cn+28,y+12+k*38)});
+      y+=r.h;
+    });
+    return new Promise(function(res){c.toBlob(res,'image/jpeg',0.9)});
+  });
+}
+
+$('send').addEventListener('click',function(){
+  if(!items.length){alert('Сначала добавьте хотя бы одну запись');return}
+  var btn=$('send');btn.textContent='Готовлю…';
+  buildImage().then(function(blob){
+    btn.textContent='📤 Отправить таблицу';
+    var file=new File([blob],'nasekomye.jpg',{type:'image/jpeg'});
+    var tryShare=Promise.resolve(false);
+    try{
+      if(navigator.canShare&&navigator.canShare({files:[file]})){
+        tryShare=navigator.share({files:[file],title:'База насекомых'}).then(function(){return true}).catch(function(e){return e&&e.name==='AbortError'});
+      }
+    }catch(e){}
+    tryShare.then(function(done){
+      if(done)return;
+      $('ovimg').src=URL.createObjectURL(blob);$('ov').classList.add('on');
+    });
+  }).catch(function(){btn.textContent='📤 Отправить таблицу';alert('Не удалось создать картинку')});
+});
+$('ovclose').addEventListener('click',function(){$('ov').classList.remove('on')});
+
+$('exp').addEventListener('click',function(){
+  if(!items.length){alert('Сначала добавьте хотя бы одну запись');return}
+  var data=JSON.stringify({v:1,items:items.map(function(it){return{name:it.name,desc:it.desc,photo:it.photo,ts:it.ts}})});
+  var file=new File([data],'baza-nasekomyh.json',{type:'application/json'});
+  var done=Promise.resolve(false);
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[file]})){
+      done=navigator.share({files:[file],title:'Копия базы насекомых'}).then(function(){return true}).catch(function(e){return !!e&&e.name==='AbortError'});
+    }
+  }catch(e){}
+  done.then(function(ok){
+    if(ok)return;
+    var a=document.createElement('a');
+    a.href=URL.createObjectURL(file);a.download=file.name;
+    document.body.appendChild(a);a.click();a.remove();
+  });
+});
+
+$('imp').addEventListener('click',function(){$('impfile').click()});
+$('impfile').addEventListener('change',function(e){
+  var f=e.target.files&&e.target.files[0];
+  if(!f)return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    var list;
+    try{
+      var d=JSON.parse(fr.result);
+      list=Array.isArray(d)?d:d.items;
+      if(!Array.isArray(list))throw new Error('bad');
+    }catch(err){alert('Этот файл не похож на копию базы');e.target.value='';return}
+    var have={};
+    items.forEach(function(it){have[it.ts+'|'+it.name]=1});
+    var fresh=list.filter(function(it){return it&&it.name&&!have[it.ts+'|'+it.name]}).map(function(it){
+      return{name:String(it.name),desc:String(it.desc||''),photo:it.photo||null,ts:it.ts||Date.now()};
+    });
+    fresh.reduce(function(p,it){
+      return p.then(function(){return saveItem(it)}).then(function(){items.push(it)});
+    },Promise.resolve()).then(function(){
+      render();
+      alert('Добавлено записей: '+fresh.length+(list.length-fresh.length?'. Уже были в базе: '+(list.length-fresh.length):''));
+      e.target.value='';
+    });
+  };
+  fr.readAsText(f);
+});
+
+openDb().then(loadAll).then(render);
+</script>
+</body>
+</html>
